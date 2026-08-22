@@ -85,7 +85,7 @@ async def send_for_index(bot, message):
     if message.from_user.id in ADMINS:
         buttons = [
             [InlineKeyboardButton('Yes', callback_data=f'index#accept#{chat_id}#{last_msg_id}#{message.from_user.id}')],
-            [InlineKeyboardButton('Close', callback_data='close_data')]
+            [InlineKeyboardButton('Close', callback_data='close_data', style=enums.ButtonStyle.DANGER)]
         ]
         reply_markup = InlineKeyboardMarkup(buttons)
         return await message.reply(
@@ -148,7 +148,7 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot):
             if total_messages <= 0:
                 await msg.edit(
                     "🚫 No Messages To Index.",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Close', callback_data='close_data')]])
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Close', callback_data='close_data', style=enums.ButtonStyle.DANGER)]])
                 )
                 return
             batches = ceil(total_messages / BATCH_SIZE)
@@ -246,11 +246,11 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot):
                 f"Non-Media: <code>{no_media + unsupported}</code> (Unsupported: <code>{unsupported}</code>)\n"
                 f"Errors: <code>{errors}</code>\n"
                 f"⏱️ Elapsed: <code>{get_readable_time(elapsed)}</code>",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Close', callback_data='close_data')]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Close', callback_data='close_data', style=enums.ButtonStyle.DANGER)]])
             )
         except Exception as e:
             await msg.edit(
                 f"❌ Error: <code>{e}</code>",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Close', callback_data='close_data')]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Close', callback_data='close_data', style=enums.ButtonStyle.DANGER)]])
             )
 

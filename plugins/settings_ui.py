@@ -69,7 +69,7 @@ async def handle_log_channel_menu(client, query):
 
     btn = [[
         InlineKeyboardButton('ᴄʜᴀɴɢᴇ ʟᴏɢ', callback_data=f'changelog#{grp_id}'),
-        InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ʟᴏɢ', callback_data=f'removelog#{grp_id}'),
+        InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ʟᴏɢ', callback_data=f'removelog#{grp_id}', style=enums.ButtonStyle.DANGER),
     ],[
         InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'grp_pm#{grp_id}')
     ]]
@@ -106,7 +106,7 @@ async def handle_forcesub_menu(client, query):
 
     btn = [[
         InlineKeyboardButton('ꜱᴇᴛ ꜰꜱᴜʙ', callback_data=f'set_fsub_ui#{grp_id}'),
-        InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ꜰꜱᴜʙ', callback_data=f'remove_fsub_ui#{grp_id}'),
+        InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ꜰꜱᴜʙ', callback_data=f'remove_fsub_ui#{grp_id}', style=enums.ButtonStyle.DANGER),
     ],[
         InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'grp_pm#{grp_id}')
     ]]
@@ -138,7 +138,7 @@ async def handle_custom_caption_menu(client, query):
 
     btn = [[
         InlineKeyboardButton('ᴄᴜꜱᴛᴏᴍ ᴄᴀᴘᴛɪᴏɴ', callback_data=f'changecaption#{grp_id}'),
-        InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ᴄᴀᴘᴛɪᴏɴ', callback_data=f'removecaption#{grp_id}'),
+        InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ᴄᴀᴘᴛɪᴏɴ', callback_data=f'removecaption#{grp_id}', style=enums.ButtonStyle.DANGER),
     ],[
         InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'grp_pm#{grp_id}')
     ]]
@@ -720,7 +720,7 @@ async def prompt_group_deletion(client, query):
 
         buttons = [
             [
-                InlineKeyboardButton('ʏᴇs, ᴅᴇʟᴇᴛᴇ', callback_data=f'delete_group#{grp_id}'),
+                InlineKeyboardButton('ʏᴇs, ᴅᴇʟᴇᴛᴇ', callback_data=f'delete_group#{grp_id}', style=enums.ButtonStyle.DANGER),
                 InlineKeyboardButton('ᴄᴀɴᴄᴇʟ', callback_data=f'open_settings#{grp_id}')
             ]
         ]

@@ -674,11 +674,11 @@ async def group_setting_buttons(grp_id):
                 InlineKeyboardButton('ꜱᴇᴛ ᴄᴀᴘᴛɪᴏɴ', callback_data=f'caption_setgs#{grp_id}'),
                 InlineKeyboardButton('ᴄᴜꜱᴛᴏᴍ ꜰꜱᴜʙ', callback_data=f'fsub_setgs#{grp_id}'),
             ],[
-                InlineKeyboardButton("Dᴇʟᴇᴛᴇ Gʀᴏᴜᴘ", callback_data=f"delete_group_check#{grp_id}")
+                InlineKeyboardButton("Dᴇʟᴇᴛᴇ Gʀᴏᴜᴘ", callback_data=f"delete_group_check#{grp_id}", style=enums.ButtonStyle.DANGER)
             ],[
-                InlineKeyboardButton("Rᴇᴍᴏᴠᴇ Gʀᴏᴜᴘ Cᴏɴɴᴇᴄᴛɪᴏɴ", callback_data=f"removegrp#{grp_id}")
+                InlineKeyboardButton("Rᴇᴍᴏᴠᴇ Gʀᴏᴜᴘ Cᴏɴɴᴇᴄᴛɪᴏɴ", callback_data=f"removegrp#{grp_id}", style=enums.ButtonStyle.DANGER)
             ],[
-                InlineKeyboardButton('⇋ ᴄʟᴏꜱᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ ⇋', callback_data='close_data')
+                InlineKeyboardButton('⇋ ᴄʟᴏꜱᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ ⇋', callback_data='close_data', style=enums.ButtonStyle.DANGER)
     ]]
     return buttons
 

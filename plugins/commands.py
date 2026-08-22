@@ -225,7 +225,9 @@ async def start(client, message):
             buttons = [[
                         InlineKeyboardButton('📲 ꜱᴇɴᴅ ᴘᴀʏᴍᴇɴᴛ ꜱᴄʀᴇᴇɴꜱʜᴏᴛ', url=OWNER_LNK)
                       ],[
-                        InlineKeyboardButton('❌ ᴄʟᴏꜱᴇ ❌', callback_data='close_data')
+                        InlineKeyboardButton('UPI ID Copy Karein ??', copy_text=OWNER_UPI_ID, style=enums.ButtonStyle.PRIMARY)
+                      ],[
+                        InlineKeyboardButton('❌ ᴄʟᴏꜱᴇ ❌', callback_data='close_data', style=enums.ButtonStyle.DANGER)
                       ]]
             reply_markup = InlineKeyboardMarkup(buttons)
             await message.reply_photo(
@@ -618,7 +620,7 @@ async def delete_all_index(bot, message):
             [
                 [
                     InlineKeyboardButton(
-                        text="⚠️ ʏᴇꜱ ⚠️", callback_data="autofilter_delete"
+                        text="⚠️ ʏᴇꜱ ⚠️", callback_data="autofilter_delete", style=enums.ButtonStyle.DANGER
                     )
                 ],
                 [
@@ -836,7 +838,7 @@ async def deletemultiplefiles(bot, message):
     btn = [[
        InlineKeyboardButton("⚠️ Yes, Continue ! ⚠️", callback_data=f"killfilesdq#{keyword}")
        ],[
-       InlineKeyboardButton("❌ No, Abort operation ! ❌", callback_data="close_data")
+       InlineKeyboardButton("❌ No, Abort operation ! ❌", callback_data="close_data", style=enums.ButtonStyle.DANGER)
     ]]
     await message.reply_text(
         text=f"<b>Found {total} files for your query {keyword} !\n\nDo you want to delete?</b>",
@@ -1226,7 +1228,7 @@ async def all_settings(client, message):
     text = generate_settings_text(settings, title)
     btn = [
         [InlineKeyboardButton("♻️ ʀᴇꜱᴇᴛ ꜱᴇᴛᴛɪɴɢꜱ", callback_data=f"reset_group_{grp_id}")],
-        [InlineKeyboardButton("🚫 ᴄʟᴏꜱᴇ", callback_data="close_data")]
+        [InlineKeyboardButton("🚫 ᴄʟᴏꜱᴇ", callback_data="close_data", style=enums.ButtonStyle.DANGER)]
     ]
     dlt = await message.reply_text(text, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
     await asyncio.sleep(300)
@@ -1270,7 +1272,7 @@ async def reset_group_callback(client, callback_query):
     text = generate_settings_text(updated, title, reset_done=True)
     buttons = [
         [InlineKeyboardButton("♻️ ʀᴇꜱᴇᴛ ꜱᴇᴛᴛɪɴɢꜱ", callback_data=f"reset_group_{grp_id}")],
-        [InlineKeyboardButton("🚫 ᴄʟᴏꜱᴇ", callback_data="close_data")]
+        [InlineKeyboardButton("🚫 ᴄʟᴏꜱᴇ", callback_data="close_data", style=enums.ButtonStyle.DANGER)]
     ]
     await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
 

@@ -1,3 +1,4 @@
+from pyrogram import enums
 
 import logging
 import pytz
@@ -186,7 +187,7 @@ async def plan(client, message):
             InlineKeyboardButton('• ʀᴇꜰᴇʀ ꜰʀɪᴇɴᴅꜱ', callback_data='reffff'),
             InlineKeyboardButton('ꜰʀᴇᴇ ᴛʀɪᴀʟ •', callback_data='free')
         ],[
-            InlineKeyboardButton('🚫 ᴄʟᴏꜱᴇ 🚫', callback_data='close_data')
+            InlineKeyboardButton('🚫 ᴄʟᴏꜱᴇ 🚫', callback_data='close_data', style=enums.ButtonStyle.DANGER)
         ]]
     msg = await message.reply_photo(
         photo="https://graph.org/file/86da2027469565b5873d6.jpg",
@@ -209,9 +210,9 @@ async def premium_button(client, callback_query: CallbackQuery):
         if amount in STAR_PREMIUM_PLANS:
             try:
                 buttons = [[
-                    InlineKeyboardButton("Pay with Stars ??", pay=True)
+                    InlineKeyboardButton("Pay with Stars ??", pay=True, style=enums.ButtonStyle.PRIMARY)
                 ], [
-                    InlineKeyboardButton("? Close ?", callback_data="close_data")
+                    InlineKeyboardButton("? Close ?", callback_data="close_data", style=enums.ButtonStyle.DANGER)
                 ]]
                 reply_markup = InlineKeyboardMarkup(buttons)
                 await client.send_invoice(
