@@ -385,7 +385,7 @@ async def old_get_poster(query, bulk=False, id=False, file=None):
     plot = ""
     if not LONG_IMDB_DESCRIPTION:
         plot = movie.get('plot')
-        if plot and len(plot) > 0:
+        if isinstance(plot, list) and len(plot) > 0:
             plot = plot[0]
     else:
         plot = movie.get('plot outline')
@@ -451,7 +451,7 @@ async def get_posterx(query, bulk=False, id=False, file=None):
     plot = ""
     if not LONG_IMDB_DESCRIPTION:
         plot = details.get('plot')
-        if plot and len(plot) > 0:
+        if isinstance(plot, list) and len(plot) > 0:
             plot = plot[0]
     else:
         plot = details.get('plot outline')
