@@ -167,7 +167,7 @@ async def get_stats(bot, message):
         msg = await message.reply('ᴀᴄᴄᴇꜱꜱɪɴɢ ꜱᴛᴀᴛᴜꜱ ᴅᴇᴛᴀɪʟꜱ...')
         total_users = await db.total_users_count()
         totl_chats = await db.total_chat_count()
-        premium = await db.all_premium_users()
+        premium = 0  # Premium removed
         file1 = await Media.count_documents()
         DB_SIZE = 512 * 1024 * 1024
         
