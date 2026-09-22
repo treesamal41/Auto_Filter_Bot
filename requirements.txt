@@ -1,4 +1,3 @@
-# pyrofork==2.3.69
 kurigram
 tgcrypto
 pymongo==4.13.2
@@ -23,4 +22,4 @@ rapidfuzz
 
 # Git-based Packages
 git+https://github.com/DreamXBotz/IMDBKit.git@main
-git+https://github.com/DreamXBotz/cinemagoer
+

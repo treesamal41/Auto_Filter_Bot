@@ -10,13 +10,14 @@ import urllib.parse
 import logging
 import aiohttp
 
+logger = logging.getLogger(__name__)
 
 async def render_page(id, secure_hash, src=None):
     await dreamxbotz.get_messages(int(BIN_CHANNEL), int(id))
     file_data = await get_file_ids(dreamxbotz, int(BIN_CHANNEL), int(id))
     if file_data.unique_id[:6] != secure_hash:
-        logging.debug(f"link hash: {secure_hash} - {file_data.unique_id[:6]}")
-        logging.debug(f"Invalid hash for message with - ID {id}")
+        logger.debug(f"link hash: {secure_hash} - {file_data.unique_id[:6]}")
+        logger.debug(f"Invalid hash for message with - ID {id}")
         raise InvalidHash
 
     src = urllib.parse.urljoin(

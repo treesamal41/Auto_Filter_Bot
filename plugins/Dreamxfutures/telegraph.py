@@ -1,5 +1,5 @@
 import os
-import requests
+import aiohttp
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
@@ -18,16 +18,21 @@ async def c_upload(client, message: Message):
         if not downloaded_media:
             return await msg.edit_text("Something went wrong during download.")
         with open(downloaded_media, "rb") as f:
-            resp = requests.post(
-                "https://api.imgbb.com/1/upload",
-                data={"key": IMGBB_API_KEY},
-                files={"image": f}
-            )
+            img_bytes = f.read()
         os.remove(downloaded_media)
+
+        data = aiohttp.FormData()
+        data.add_field('key', IMGBB_API_KEY)
+        data.add_field('image', img_bytes, filename="image.jpg")
         
-        if resp.status_code == 200:
-            result = resp.json()
-            if result["success"]:
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.imgbb.com/1/upload", data=data) as resp:
+                status_code = resp.status
+                if status_code == 200:
+                    result = await resp.json()
+        
+        if status_code == 200:
+            if result.get("success"):
                 await msg.edit_text(f"{result['data']['url']}")
             else:
                 await msg.edit_text("Something went wrong. Please try again later.")

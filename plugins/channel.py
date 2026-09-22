@@ -9,7 +9,7 @@ from pyrogram import Client, filters, enums
 from info import CHANNELS, MOVIE_UPDATE_CHANNEL, LINK_PREVIEW, ABOVE_PREVIEW, BAD_WORDS, LANDSCAPE_POSTER, TMDB_POSTER
 from Script import script
 from database.ia_filterdb import save_file
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions
 from utils import temp
 from pymongo.errors import PyMongoError, DuplicateKeyError
 from pyrogram.errors import MessageIdInvalid, MessageNotModified, FloodWait
@@ -96,8 +96,9 @@ def normalize(s: str) -> str:
     s = NORMALIZE_PATTERN.sub(" ", s)
     return re.sub(r"\s+", " ", s).strip()
 
+IGNORE_WORDS_LOWER = {w.lower() for w in IGNORE_WORDS}
+
 def remove_ignored_words(text: str) -> str:
-    IGNORE_WORDS_LOWER = {w.lower() for w in IGNORE_WORDS}
     return " ".join(word for word in text.split() if word.lower() not in IGNORE_WORDS_LOWER)
 
 def get_qualities(text: str) -> str:
@@ -258,14 +259,14 @@ async def media_handler(bot, message):
     if not media:
         return
 
-    media.file_type = next(ft for ft in ("document", "video", "audio") if hasattr(message, ft))
+    media.file_type = next(ft for ft in ("document", "video", "audio") if getattr(message, ft, None))
     media.caption = message.caption or ""
     success, info = await save_file(media)
     if not success:
         return
 
     try:
-        if await db.movie_update_status(bot.me.id):
+        if await db.movie_update_status(temp.ME):
             await process_and_send_update(bot, media.file_name, media.caption)
     except Exception:
         logger.exception("Error processing media")
@@ -402,7 +403,9 @@ async def send_movie_update(bot, base_name):
                     "parse_mode": enums.ParseMode.HTML
                 }
                 if movie_doc.get("poster_url") and LINK_PREVIEW:
-                    send_params["invert_media"] = ABOVE_PREVIEW
+                    send_params["link_preview_options"] = LinkPreviewOptions(is_disabled=False, show_above_text=ABOVE_PREVIEW)
+                else:
+                    send_params["link_preview_options"] = LinkPreviewOptions(is_disabled=not LINK_PREVIEW)
                 msg = await bot.send_message(**send_params)
                 is_photo = False
 
@@ -456,11 +459,12 @@ async def update_movie_message(bot, base_name):
                     text=text,
                     reply_markup=buttons,
                     parse_mode=enums.ParseMode.HTML,
-                    invert_media=ABOVE_PREVIEW,
-                    disable_web_page_preview=not LINK_PREVIEW
+                    link_preview_options=LinkPreviewOptions(is_disabled=not LINK_PREVIEW, show_above_text=ABOVE_PREVIEW)
                 )
             return
-        except (MessageIdInvalid, MessageNotModified) as e:
+        except MessageNotModified:
+            pass
+        except MessageIdInvalid as e:
             logger.warning(f"Message update skipped due to error: {e}")
             pass
         except Exception:

@@ -23,6 +23,7 @@ from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = 500_000_000
 
+logger = logging.getLogger(__name__)
 logging.config.fileConfig('logging.conf')
 logging.getLogger().setLevel(logging.INFO)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
@@ -33,11 +34,10 @@ logging.getLogger("pymongo").setLevel(logging.WARNING)
 
 botStartTime = time.time()
 
-
 def get_plugins_names(plugins_dir="plugins"):
     plugins_path = Path(plugins_dir)
     if not plugins_path.exists():
-        logging.warning("Plugins directory not found: %s", plugins_path)
+        logger.warning("Plugins directory not found: %s", plugins_path)
         return []
 
     return [
@@ -47,7 +47,8 @@ def get_plugins_names(plugins_dir="plugins"):
     ]
 
 async def dreamxbotz_start():
-    logging.info('\n\nInitializing DreamxBotz')
+    logger.info('\n\nInitializing DreamxBotz')
+    dreamxbotz.loop = asyncio.get_running_loop()
     await dreamxbotz.start()
     bot_info = await dreamxbotz.get_me()
     dreamxbotz.username = bot_info.username
@@ -55,9 +56,9 @@ async def dreamxbotz_start():
     plugins_names = get_plugins_names()
     if plugins_names:
         plugins_list = "\n".join(f"  {i}. {name}" for i, name in enumerate(plugins_names, 1))
-        logging.info("Plugins Found (%d):\n%s", len(plugins_names), plugins_list)
+        logger.info("Plugins Found (%d):\n%s", len(plugins_names), plugins_list)
     else:
-        logging.warning("No plugins found.")
+        logger.warning("No plugins found.")
 
     if ON_HEROKU:
         asyncio.create_task(ping_server())
@@ -67,9 +68,9 @@ async def dreamxbotz_start():
     await Media.ensure_indexes()
     if MULTIPLE_DB:
         await Media2.ensure_indexes()
-        logging.info("Multiple Database Mode On. Now Files Will Be Save In Second DB If First DB Is Full")
+        logger.info("Multiple Database Mode On. Now Files Will Be Save In Second DB If First DB Is Full")
     else:
-        logging.info("Single DB Mode On ! Files Will Be Save In First Database")
+        logger.info("Single DB Mode On ! Files Will Be Save In First Database")
     
     me = bot_info
     temp.ME = me.id
@@ -79,13 +80,13 @@ async def dreamxbotz_start():
     dreamxbotz.username = '@' + me.username
     asyncio.create_task(check_expired_premium(dreamxbotz))
     
-    logging.info(f"{me.first_name} with Pyrogram v{__version__} (Layer {layer}) started on {me.username}.")
-    logging.info(LOG_STR)
-    logging.info(script.LOGO)
+    logger.info(f"{me.first_name} with Pyrogram v{__version__} (Layer {layer}) started on {me.username}.")
+    logger.info(LOG_STR)
+    logger.info(script.LOGO)
     tz = pytz.timezone('Asia/Kolkata')
     today = date.today()
     now = datetime.now(tz)
-    current_time = now.strftime("%H:%M:%S %p")
+    current_time = now.strftime("%I:%M:%S %p")
     await dreamxbotz.send_message(chat_id=LOG_CHANNEL, text=script.RESTART_TXT.format(temp.B_LINK, today, current_time))
     app = web.AppRunner(await web_server())
     await app.setup()
@@ -101,9 +102,11 @@ async def dreamxbotz_start():
 
 if __name__ == '__main__':
     try:
+        logger.info('Service started...')
         asyncio.run(dreamxbotz_start())
     except FloodWait as e:
-        logging.info(f"FloodWait! Sleeping for {e.value} seconds.")
+        logger.info(f"FloodWait! Sleeping for {e.value} seconds then restarting...")
         time.sleep(e.value)
+        asyncio.run(dreamxbotz_start())
     except KeyboardInterrupt:
-        logging.info('Service stopped. Bye.')
+        logger.info('Service stopped. Bye.')

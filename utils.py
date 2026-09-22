@@ -1,6 +1,6 @@
+import logging
 import re
 import os
-import logging
 import random
 import string
 from info import ULTRA_FAST_MODE, MAX_LIST_ELM, BAD_WORDS, LONG_IMDB_DESCRIPTION, IS_VERIFY, MAX_B_TN, TUTORIAL, TUTORIAL_2, TUTORIAL_3, LOG_CHANNEL, TMDB_ON_SEARCH
@@ -16,11 +16,10 @@ from database.users_chats_db import db
 from bs4 import BeautifulSoup
 import aiohttp
 from shortzy import Shortzy
-
 from plugins.Dreamxfutures.Imdbposter import get_movie_detailsx
 
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 def get_random_mix_id():
     chars = string.ascii_letters + string.digits
@@ -30,8 +29,8 @@ BTN_URL_REGEX = re.compile(
     r"(\[([^\[]+?)\]\((buttonurl|buttonalert):(?:/{0,2})(.+?)(:same)?\))"
 )
 
+imdb = IMDBKit()
 
-imdb = IMDBKit() 
 BANNED = {}
 SMART_OPEN = '“'
 SMART_CLOSE = '”'
@@ -139,27 +138,28 @@ async def is_check_admin(bot, chat_id, user_id):
     
 async def users_broadcast(user_id, message, is_pin):
     try:
-        m=await message.copy(chat_id=user_id)
+        m = await message.copy(chat_id=user_id)
         if is_pin:
             await m.pin(both_sides=True)
         return True, "Success"
     except FloodWait as e:
-        await asyncio.sleep(e.x)
-        return await users_broadcast(user_id, message)
+        await asyncio.sleep(e.value)
+        return await users_broadcast(user_id, message, is_pin)
     except InputUserDeactivated:
         await db.delete_user(int(user_id))
-        logging.info(f"{user_id}-Removed from Database, since deleted account.")
+        logger.info(f"{user_id}-Removed from Database, since deleted account.")
         return False, "Deleted"
     except UserIsBlocked:
-        logging.info(f"{user_id} -Blocked the bot.")
-        await db.delete_user(user_id)
+        logger.info(f"{user_id} -Blocked the bot.")
         return False, "Blocked"
     except PeerIdInvalid:
         await db.delete_user(int(user_id))
-        logging.info(f"{user_id} - PeerIdInvalid")
+        logger.info(f"{user_id} - PeerIdInvalid")
         return False, "Error"
-    except Exception:
+    except Exception as e:
+        logger.error(f"[BROADCAST FAIL] user={user_id} | {type(e).__name__}: {e}")
         return False, "Error"
+
 
 async def groups_broadcast(chat_id, message, is_pin):
     try:
@@ -171,8 +171,8 @@ async def groups_broadcast(chat_id, message, is_pin):
                 pass
         return "Success"
     except FloodWait as e:
-        await asyncio.sleep(e.x)
-        return await groups_broadcast(chat_id, message)
+        await asyncio.sleep(e.value)
+        return await groups_broadcast(chat_id, message, is_pin)
     except Exception:
         await db.delete_chat(chat_id)
         return "Error"
@@ -181,13 +181,13 @@ async def junk_group(chat_id, message):
     try:
         kk = await message.copy(chat_id=chat_id)
         await kk.delete(True)
-        return True, "Succes", 'mm'
+        return True, "Success", 'mm'
     except FloodWait as e:
         await asyncio.sleep(e.value)
         return await junk_group(chat_id, message)
     except Exception as e:
         await db.delete_chat(int(chat_id))       
-        logging.info(f"{chat_id} - PeerIdInvalid")
+        logger.info(f"{chat_id} - PeerIdInvalid")
         return False, "deleted", f'{e}\n\n'
     
 
@@ -201,14 +201,14 @@ async def clear_junk(user_id, message):
         return await clear_junk(user_id, message)
     except InputUserDeactivated:
         await db.delete_user(int(user_id))
-        logging.info(f"{user_id}-Removed from Database, since deleted account.")
+        logger.info(f"{user_id}-Removed from Database, since deleted account.")
         return False, "Deleted"
     except UserIsBlocked:
-        logging.info(f"{user_id} -Blocked the bot.")
+        logger.info(f"{user_id} -Blocked the bot.")
         return False, "Blocked"
     except PeerIdInvalid:
         await db.delete_user(int(user_id))
-        logging.info(f"{user_id} - PeerIdInvalid")
+        logger.info(f"{user_id} - PeerIdInvalid")
         return False, "Error"
     except Exception:
         return False, "Error"
@@ -217,7 +217,7 @@ async def get_status(bot_id):
     try:
         return await db.movie_update_status(bot_id) or False  
     except Exception as e:
-        logging.error(f"Error in get_movie_update_status: {e}")
+        logger.error(f"Error in get_movie_update_status: {e}")
         return False  
 
 async def add_name_to_db(filename):
@@ -676,8 +676,6 @@ async def group_setting_buttons(grp_id):
             ],[
                 InlineKeyboardButton("Dᴇʟᴇᴛᴇ Gʀᴏᴜᴘ", callback_data=f"delete_group_check#{grp_id}", style=enums.ButtonStyle.DANGER)
             ],[
-                InlineKeyboardButton("Rᴇᴍᴏᴠᴇ Gʀᴏᴜᴘ Cᴏɴɴᴇᴄᴛɪᴏɴ", callback_data=f"removegrp#{grp_id}", style=enums.ButtonStyle.DANGER)
-            ],[
                 InlineKeyboardButton('⇋ ᴄʟᴏꜱᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ ⇋', callback_data='close_data', style=enums.ButtonStyle.DANGER)
     ]]
     return buttons
@@ -1114,5 +1112,5 @@ async def get_cap(settings, remaining_seconds, files, query, total_results, sear
                         )
         return cap
     except Exception as e:
-        logging.error(f"Error in get_cap: {e}")
+        logger.error(f"Error in get_cap: {e}")
         pass

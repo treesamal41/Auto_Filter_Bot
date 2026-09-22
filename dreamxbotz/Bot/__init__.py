@@ -4,17 +4,7 @@ from typing import Union, Optional, AsyncGenerator
 from pyrogram import Client, types
 from info import API_ID, API_HASH, BOT_TOKEN, SESSION
 
-logging.config.fileConfig('logging.conf')
-logging.getLogger().setLevel(logging.INFO)
-logging.getLogger("pyrogram").setLevel(logging.ERROR)
-logging.getLogger("imdbpy").setLevel(logging.ERROR)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logging.getLogger("aiohttp").setLevel(logging.ERROR)
-logging.getLogger("aiohttp.web").setLevel(logging.ERROR)
-
+logger = logging.getLogger(__name__)
 
 class dreamcinezoneXBot(Client):
 
@@ -50,7 +40,7 @@ class dreamcinezoneXBot(Client):
         Example:
             .. code-block:: python
                 for message in app.iter_messages("pyrogram", 1, 15000):
-                    print(message.text)
+                    logger.info(message.text)
         """
         current = offset
         while True:

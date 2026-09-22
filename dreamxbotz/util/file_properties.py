@@ -5,7 +5,8 @@ from pyrogram.types import Message
 from pyrogram.file_id import FileId
 from pyrogram.raw.types.messages import Messages
 from dreamxbotz.server.exceptions import FIleNotFound
-
+import logging
+logger = logging.getLogger(__name__)
 
 async def parse_file_id(message: "Message") -> Optional[FileId]:
     media = get_media_from_message(message)
@@ -28,6 +29,7 @@ async def get_file_ids(client: Client, chat_id: int, id: int) -> Optional[FileId
     setattr(file_id, "mime_type", getattr(media, "mime_type", ""))
     setattr(file_id, "file_name", getattr(media, "file_name", ""))
     setattr(file_id, "unique_id", file_unique_id)
+    setattr(file_id, "file_id", media.file_id)
     return file_id
 
 def get_media_from_message(message: "Message") -> Any:

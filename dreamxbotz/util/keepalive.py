@@ -5,6 +5,8 @@ import aiohttp
 import traceback
 from info import PING_INTERVAL, URL
 
+logger = logging.getLogger(__name__)
+
 async def ping_server():
     sleep_time = PING_INTERVAL
     while True:
@@ -14,8 +16,8 @@ async def ping_server():
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as session:
                 async with session.get(URL) as resp:
-                    logging.info("Pinged server with response: {}".format(resp.status))
+                    logger.info("Pinged server with response: {}".format(resp.status))
         except TimeoutError:
-            logging.warning("Couldn't connect to the site URL..!")
+            logger.warning("Couldn't connect to the site URL..!")
         except Exception:
             traceback.print_exc()
