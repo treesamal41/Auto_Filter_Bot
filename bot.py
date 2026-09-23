@@ -2,7 +2,6 @@ import plugins.monkey_patch  # noqa: F401
 import logging
 import logging.config
 from pyrogram import idle, __version__
-from pyrogram.raw.all import layer
 import time
 from pyrogram.errors import FloodWait
 import asyncio
@@ -79,7 +78,7 @@ async def dreamxbotz_start():
     temp.B_LINK = me.mention
     dreamxbotz.username = '@' + me.username
     
-    logger.info(f"{me.first_name} with Pyrogram v{__version__} (Layer {layer}) started on {me.username}.")
+    logger.info(f"{me.first_name} with Pyrogram v{__version__} started on {me.username}.")
     logger.info(LOG_STR)
     logger.info(script.LOGO)
     tz = pytz.timezone('Asia/Kolkata')
