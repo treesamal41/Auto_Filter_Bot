@@ -15,6 +15,7 @@ from info import MULTIPLE_DB, ON_HEROKU, LOG_STR, LOG_CHANNEL, PORT
 from utils import temp
 from Script import script
 from plugins import web_server, keep_alive
+from plugins.ott_updates import ott_updates_poster
 from dreamxbotz.Bot import dreamxbotz
 from dreamxbotz.util.keepalive import ping_server
 from dreamxbotz.Bot.clients import initialize_clients
@@ -102,6 +103,7 @@ async def dreamxbotz_start():
     bind_address = "0.0.0.0"
     await web.TCPSite(app, bind_address, PORT).start()
     asyncio.create_task(keep_alive())
+    asyncio.create_task(ott_updates_poster(dreamxbotz))
     log_memory("before idle - bot fully started")
 
     try:
