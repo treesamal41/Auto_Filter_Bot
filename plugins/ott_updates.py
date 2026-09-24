@@ -29,7 +29,6 @@ WANTED_PROVIDERS = [
     "sunnxt",
 ]
 
-MAX_POSTS_PER_RUN = 8
 LOOKBACK_DAYS = 14
 
 
@@ -140,20 +139,19 @@ async def run_ott_update(client):
         ]
         for media_type, path, extra in targets:
             params = {"watch_region": "IN", "with_watch_providers": ids,
-                      "language": "en-US", "page": 1, "vote_count.gte": 5}
+                      "with_watch_monetization_types": "flatrate",
+                      "language": "en-US", "page": 1}
             params.update(extra)
             data = await tmdb_get(session, path, **params)
+            n = len(data.get("results", [])) if data else 0
+            logger.info(f"OTT discover {media_type}: {n} results")
             if not data:
                 continue
             for item in sorted(data.get("results", []),
                                key=lambda x: x.get("popularity", 0), reverse=True):
-                if posted >= MAX_POSTS_PER_RUN:
-                    break
                 if await post_item(client, session, item, media_type, provider_map):
                     posted += 1
                     await asyncio.sleep(2)
-            if posted >= MAX_POSTS_PER_RUN:
-                break
     logger.info(f"OTT update done, posted {posted}")
     return posted
 
@@ -172,4 +170,4 @@ async def ott_updates_poster(client):
 async def ott_now(client, message):
     status = await message.reply("Checking new OTT releases...")
     count = await run_ott_update(client)
-    await status.edit(f"Done. {count} new OTT post(s).")
+    await status.edit(f"Done. {count} new OTT post(s).\nLog-il 'OTT discover' ennu nokku detailsinu.")
