@@ -22,6 +22,16 @@ from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = 500_000_000
 
+
+def log_memory(tag):
+    try:
+        import psutil, os
+        mb = psutil.Process(os.getpid()).memory_info().rss // (1024 * 1024)
+        logger.info(f"[MEM] {tag}: {mb} MB")
+    except Exception:
+        pass
+
+
 logger = logging.getLogger(__name__)
 logging.config.fileConfig('logging.conf')
 logging.getLogger().setLevel(logging.INFO)
@@ -47,6 +57,7 @@ def get_plugins_names(plugins_dir="plugins"):
 
 async def dreamxbotz_start():
     logger.info('\n\nInitializing DreamxBotz')
+    log_memory("startup begin")
     dreamxbotz.loop = asyncio.get_running_loop()
     await dreamxbotz.start()
     bot_info = await dreamxbotz.get_me()
@@ -91,6 +102,7 @@ async def dreamxbotz_start():
     bind_address = "0.0.0.0"
     await web.TCPSite(app, bind_address, PORT).start()
     asyncio.create_task(keep_alive())
+    log_memory("before idle - bot fully started")
 
     try:
         await idle()
