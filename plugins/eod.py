@@ -15,10 +15,11 @@ Commands (admins only, private chat recommended):
     /eodtypes   - cash move type list
 
 Photo book tally (SBI 8-book workflow):
-    8 book photos fixed order-il ayakku (reply illa),
-    /eodbookdone - full CBS line-wise tally oru reply
+    8 book photos ayakku (caption-il book name koduthal order thettiyal polum
+    correct aayi match akum), reply illa,
+    /eodbookdone - full CBS line-wise tally oru reply (+ Excel file)
     /eodbookreset - photos clear
-    /eodbookorder - book order kanikku
+    /eodbookorder - book order + kitti tick mark
 
 NOTE: bot CBS site-il touch cheyyilla - nee thanne login cheythu
 enter cheyyanam. Entries memory-il aanu (dyno restart aayal pokum).
@@ -233,7 +234,7 @@ BOOK_ORDER = [
     ("SBI Vazhakulam HCMS", "HCMS"),
 ]
 _BOOK_DENOS = (500, 200, 100)
-_book_sessions = {}  # {user_id: [book_data, ...]}
+_book_sessions = {}  # {user_id: {book_name: book_data}}
 
 _GEMINI_PROMPT = """You are reading a cashier's vault register page (a bank cash book).
 The page has two sides:
@@ -289,6 +290,31 @@ def _gemini_extract(image_bytes: bytes) -> dict:
             "notes": str(raw.get("notes", ""))[:200]}
 
 
+def _match_book(caption):
+    """Photo caption-il ninnu book kandupidikkuka (order thettiyal polum)."""
+    if not caption:
+        return None
+    t = caption.lower()
+    place = None
+    for key, name in (("aluva", "Aluva"), ("treasury", "Treasury"),
+                      ("mulamt", "Mulamthuruthy"), ("vazhakulam", "Vazhakulam")):
+        if key in t:
+            place = name
+            break
+    if not place:
+        return None
+    if "hcms" in t:
+        grp = "HCMS"
+    elif "hitachi" in t:
+        grp = "HITACHI"
+    else:
+        return None
+    for name, group in BOOK_ORDER:
+        if place in name and group == grp:
+            return (name, group)
+    return None
+
+
 def _book_combine(books, group, move):
     total = {d: 0 for d in _BOOK_DENOS}
     for b in books:
@@ -329,12 +355,75 @@ def _book_tally(books):
     return "\n".join(parts).strip()
 
 
+_BOOK_MOVES = (
+    ("out", "OUT - Issue"),
+    ("in", "IN - Return"),
+    ("withdrawal", "Withdrawal"),
+    ("deposit", "Deposit"),
+)
+
+
+def _book_excel(books):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "SBI EOD"
+    bold = Font(bold=True)
+    ws.append([f"SBI EOD Tally - {date.today().strftime('%d-%m-%Y')}"])
+    ws["A1"].font = Font(bold=True, size=14)
+    ws.append([])
+
+    header = ["Book"]
+    for mlabel in ("Issue", "Return", "Withdrawal", "Deposit"):
+        for d in _BOOK_DENOS:
+            header.append(f"{mlabel} {d}")
+
+    for group, label in (("HITACHI", "HITACHI"), ("HCMS", "HCMS (ATM-SBI-SBI)")):
+        ws.append([label])
+        ws.cell(row=ws.max_row, column=1).font = Font(bold=True, size=12)
+        ws.append(header)
+        for c in ws[ws.max_row]:
+            c.font = bold
+        totals = [0] * 12
+        for b in books:
+            if b["group"] != group:
+                continue
+            row = [b["name"]]
+            i = 0
+            for mkey, _ in _BOOK_MOVES:
+                for d in _BOOK_DENOS:
+                    p = int(b.get(mkey, {}).get(str(d), 0))
+                    row.append(p)
+                    totals[i] += p
+                    i += 1
+            ws.append(row)
+        ws.append(["TOTAL"] + totals)
+        for c in ws[ws.max_row]:
+            c.font = bold
+        ws.append([])
+
+    ws.column_dimensions["A"].width = 24
+    for col in ws.columns:
+        letter = col[0].column_letter
+        if letter != "A":
+            ws.column_dimensions[letter].width = 13
+    return wb
+
+
 @Client.on_message(filters.photo & _eod_only)
 async def eod_book_photo(client, message):
     uid = message.from_user.id
-    books = _book_sessions.setdefault(uid, [])
-    idx = len(books) % len(BOOK_ORDER)
-    name, group = BOOK_ORDER[idx]
+    session = _book_sessions.setdefault(uid, {})
+    matched = _match_book(message.caption)
+    if matched:
+        name, group = matched
+    else:
+        # caption illenkil: fixed order-il varatha first book
+        name, group = next(
+            ((n, g) for n, g in BOOK_ORDER if n not in session),
+            BOOK_ORDER[len(session) % len(BOOK_ORDER)],
+        )
     try:
         path = await message.download()
         with open(path, "rb") as f:
@@ -343,25 +432,48 @@ async def eod_book_photo(client, message):
             os.remove(path)
         except OSError:
             pass
+    except RuntimeError as e:
+        logger.exception("eod book photo extract failed")
+        if "GEMINI_API_KEY" in str(e):
+            await message.reply_text(
+                f"{name}: Heroku-il GEMINI_API_KEY set cheythittilla. "
+                "Config Vars-il add cheythu redeploy cheyyu."
+            )
+        else:
+            await message.reply_text(
+                f"{name}: vayikkan pattilla. Photo veendum ayakku."
+            )
+        return
     except Exception:
         logger.exception("eod book photo extract failed")
         await message.reply_text(
             f"{name}: vayikkan pattilla. Photo veendum ayakku."
         )
         return
-    books.append({"name": name, "group": group, **data})
+    session[name] = {"name": name, "group": group, **data}
     # silent by design — no reply per photo
 
 
 @Client.on_message(filters.command("eodbookdone") & _eod_only)
 async def eod_book_done(client, message):
     uid = message.from_user.id
-    books = _book_sessions.get(uid, [])
+    session = _book_sessions.get(uid, {})
+    books = [session[n] for n, _ in BOOK_ORDER if n in session]
     if not books:
         await message.reply_text("Books onnum illa. Photos ayakku, pinne /eodbookdone.")
         return
     tally = _book_tally(books)
     await message.reply_text(f"SBI EOD Tally ({len(books)} books)\n\n{tally}")
+    xlsx_path = f"/tmp/eod_{uid}_{date.today().strftime('%Y%m%d')}.xlsx"
+    try:
+        _book_excel(books).save(xlsx_path)
+        await message.reply_document(xlsx_path, caption="SBI EOD Tally — Excel")
+    except Exception:
+        logger.exception("eod excel build failed")
+    try:
+        os.remove(xlsx_path)
+    except OSError:
+        pass
     _book_sessions.pop(uid, None)
 
 
@@ -373,5 +485,9 @@ async def eod_book_reset(client, message):
 
 @Client.on_message(filters.command("eodbookorder") & _eod_only)
 async def eod_book_order(client, message):
-    lines = [f"{i+1}. {name}" for i, (name, _) in enumerate(BOOK_ORDER)]
+    session = _book_sessions.get(message.from_user.id, {})
+    lines = []
+    for i, (name, _) in enumerate(BOOK_ORDER):
+        mark = "✅" if name in session else f"{i + 1}."
+        lines.append(f"{mark} {name}")
     await message.reply_text("Book order:\n" + "\n".join(lines))
