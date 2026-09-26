@@ -236,8 +236,10 @@ BOOK_ORDER = [
 ]
 _BOOK_DENOS = (500, 200, 100)
 _book_sessions = {}  # {user_id: {book_name: book_data}}
-EOD_PLUGIN_VERSION = "2026-09-27f"
-EOD_GEMINI_MODEL = "gemini-3.8-flash"  # 2.x models not available to new API keys
+EOD_PLUGIN_VERSION = "2026-09-27g"
+# 2.x models not available to new API keys; 3.8 overload aayal 3.7 fallback
+EOD_GEMINI_MODELS = ("gemini-3.8-flash", "gemini-3.7-flash")
+EOD_GEMINI_MODEL = EOD_GEMINI_MODELS[0]
 
 _GEMINI_PROMPT = """You are reading a cashier's vault register page (a bank cash book).
 The page has two sides:
@@ -260,11 +262,7 @@ Reply with ONLY this JSON, no other text:
  "notes": "any ambiguity, max 1 line"}"""
 
 
-def _gemini_extract(image_bytes: bytes) -> dict:
-    key = os.environ.get("GEMINI_API_KEY", "")
-    if not key:
-        raise RuntimeError("GEMINI_API_KEY not set")
-    model = EOD_GEMINI_MODEL
+def _gemini_call(model: str, key: str, image_bytes: bytes) -> dict:
     logger.info(f"eod gemini model={model} key_len={len(key)}")
     payload = {"contents": [{"parts": [
         {"text": _GEMINI_PROMPT},
@@ -281,6 +279,8 @@ def _gemini_extract(image_bytes: bytes) -> dict:
         with urllib.request.urlopen(req, timeout=180) as r:
             data = json.load(r)
     except urllib.error.HTTPError as e:
+        if e.code in (429, 503):
+            raise  # _gemini_extract tries the next model
         raise RuntimeError(f"Gemini API HTTP {e.code}")
     except Exception as e:
         raise RuntimeError(f"Gemini request failed ({type(e).__name__})")
@@ -297,6 +297,25 @@ def _gemini_extract(image_bytes: bytes) -> dict:
             "withdrawal": clean(raw.get("withdrawal")),
             "deposit": clean(raw.get("deposit")),
             "notes": str(raw.get("notes", ""))[:200]}
+
+
+def _gemini_extract(image_bytes: bytes) -> dict:
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY not set")
+    last_err = "Gemini request failed"
+    for model in EOD_GEMINI_MODELS:
+        try:
+            return _gemini_call(model, key, image_bytes)
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 503):
+                logger.warning(f"eod gemini {model} HTTP {e.code}, trying next model")
+                last_err = f"Gemini API HTTP {e.code}"
+                continue
+            raise RuntimeError(f"Gemini API HTTP {e.code}")
+        except Exception as e:
+            raise RuntimeError(f"Gemini request failed ({type(e).__name__})")
+    raise RuntimeError(last_err)
 
 
 def _match_book(caption):
