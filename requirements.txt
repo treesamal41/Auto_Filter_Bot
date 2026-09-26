@@ -18,6 +18,10 @@ aiofiles
 dnspython==2.7.0
 jinja2
 rapidfuzz
+yt-dlp
+
+# Excel export for EOD photo tally
+openpyxl
 
 # Git-based Packages
 git+https://github.com/DreamXBotz/IMDBKit.git@main
