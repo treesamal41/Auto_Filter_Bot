@@ -238,10 +238,28 @@ BOOK_ORDER = [
 _BOOK_DENOS = (500, 200, 100)
 _book_sessions = {}  # {user_id: {book_name: book_data}}
 _book_locks = {}  # {user_id: asyncio.Lock} — rapid photos race ozhivakkan
-EOD_PLUGIN_VERSION = "2026-09-27h"
-# 2.x models not available to new API keys; 3.8 overload aayal 3.7 fallback
-EOD_GEMINI_MODELS = ("gemini-3.8-flash", "gemini-3.7-flash")
+EOD_PLUGIN_VERSION = "2026-09-27i"
+# 2.x models not available to new API keys; overload vannal next model try cheyyum
+EOD_GEMINI_MODELS = ("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash")
 EOD_GEMINI_MODEL = EOD_GEMINI_MODELS[0]
+
+# Phone photo resize (max 1600px) — Gemini request vegam + stable aakkan
+_EOD_IMG_MAX = 1600
+
+
+def _prep_image(image_bytes: bytes) -> bytes:
+    try:
+        from PIL import Image
+        import io
+        im = Image.open(io.BytesIO(image_bytes))
+        if im.mode != "RGB":
+            im = im.convert("RGB")
+        im.thumbnail((_EOD_IMG_MAX, _EOD_IMG_MAX), Image.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=85)
+        return buf.getvalue()
+    except Exception:
+        return image_bytes  # resize fail aayal original thanne
 
 _GEMINI_PROMPT = """You are reading a cashier's vault register page (a bank cash book).
 The page has two sides:
@@ -265,7 +283,8 @@ Reply with ONLY this JSON, no other text:
 
 
 def _gemini_call(model: str, key: str, image_bytes: bytes) -> dict:
-    logger.info(f"eod gemini model={model} key_len={len(key)}")
+    image_bytes = _prep_image(image_bytes)  # resize (thread-il, loop block avilla)
+    logger.info(f"eod gemini model={model} key_len={len(key)} img_kb={len(image_bytes)//1024}")
     payload = {"contents": [{"parts": [
         {"text": _GEMINI_PROMPT},
         {"inline_data": {"mime_type": "image/jpeg",
