@@ -32,6 +32,7 @@ import logging
 import os
 import re
 import urllib.request
+import urllib.error
 from datetime import date
 
 from pyrogram import Client, filters, enums
@@ -261,7 +262,7 @@ def _gemini_extract(image_bytes: bytes) -> dict:
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         raise RuntimeError("GEMINI_API_KEY not set")
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     payload = {"contents": [{"parts": [
         {"text": _GEMINI_PROMPT},
         {"inline_data": {"mime_type": "image/jpeg",
@@ -273,8 +274,13 @@ def _gemini_extract(image_bytes: bytes) -> dict:
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=180) as r:
-        data = json.load(r)
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            data = json.load(r)
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Gemini API HTTP {e.code}")
+    except Exception as e:
+        raise RuntimeError(f"Gemini request failed ({type(e).__name__})")
     text = data["candidates"][0]["content"]["parts"][0]["text"]
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
@@ -434,14 +440,15 @@ async def eod_book_photo(client, message):
             pass
     except RuntimeError as e:
         logger.exception("eod book photo extract failed")
-        if "GEMINI_API_KEY" in str(e):
+        msg = str(e)
+        if "GEMINI_API_KEY not set" in msg:
             await message.reply_text(
                 f"{name}: Heroku-il GEMINI_API_KEY set cheythittilla. "
                 "Config Vars-il add cheythu redeploy cheyyu."
             )
         else:
             await message.reply_text(
-                f"{name}: vayikkan pattilla. Photo veendum ayakku."
+                f"{name}: vayikkan pattilla ({msg}). Photo veendum ayakku."
             )
         return
     except Exception:
