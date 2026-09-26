@@ -26,6 +26,7 @@ enter cheyyanam. Entries memory-il aanu (dyno restart aayal pokum).
 Photo reading needs GEMINI_API_KEY (Heroku config var).
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -236,7 +237,8 @@ BOOK_ORDER = [
 ]
 _BOOK_DENOS = (500, 200, 100)
 _book_sessions = {}  # {user_id: {book_name: book_data}}
-EOD_PLUGIN_VERSION = "2026-09-27g"
+_book_locks = {}  # {user_id: asyncio.Lock} — rapid photos race ozhivakkan
+EOD_PLUGIN_VERSION = "2026-09-27h"
 # 2.x models not available to new API keys; 3.8 overload aayal 3.7 fallback
 EOD_GEMINI_MODELS = ("gemini-3.8-flash", "gemini-3.7-flash")
 EOD_GEMINI_MODEL = EOD_GEMINI_MODELS[0]
@@ -442,6 +444,13 @@ def _book_excel(books):
 @Client.on_message(filters.photo & _eod_only)
 async def eod_book_photo(client, message):
     uid = message.from_user.id
+    lock = _book_locks.setdefault(uid, asyncio.Lock())
+    async with lock:
+        await _eod_book_photo_locked(client, message)
+
+
+async def _eod_book_photo_locked(client, message):
+    uid = message.from_user.id
     session = _book_sessions.setdefault(uid, {})
     matched = _match_book(message.caption)
     if matched:
@@ -455,7 +464,9 @@ async def eod_book_photo(client, message):
     try:
         path = await message.download()
         with open(path, "rb") as f:
-            data = _gemini_extract(f.read())
+            img = f.read()
+        # blocking network call thread-il (event loop block avathirikkan)
+        data = await asyncio.to_thread(_gemini_extract, img)
         try:
             os.remove(path)
         except OSError:
