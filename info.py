@@ -97,7 +97,6 @@ TMDB_API_KEY = environ.get('TMDB_API_KEY', '') # preffer to use your own tmdb AP
 OPENSUBTITLES_API_KEY = environ.get('OPENSUBTITLES_API_KEY', '')  # Free key from https://www.opensubtitles.com/api - for subtitle downloads
 TMDB_POSTER = is_enabled(environ.get('TMDB_POSTER', "True"), True) # Shows TMDB poster in notification msg
 LANDSCAPE_POSTER = is_enabled(environ.get('LANDSCAPE_POSTER', "True"), True) # Shows landscape poster in notification msg
-OTT_CHANNEL = int(environ.get('OTT_CHANNEL', '-1002134939744')) # Channel for automatic OTT release updates (bot must be admin)
 
 # ============================
 # Verification Settings
