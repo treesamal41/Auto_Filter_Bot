@@ -236,8 +236,8 @@ BOOK_ORDER = [
 ]
 _BOOK_DENOS = (500, 200, 100)
 _book_sessions = {}  # {user_id: {book_name: book_data}}
-EOD_PLUGIN_VERSION = "2026-09-27e"
-EOD_GEMINI_MODEL = "gemini-2.5-flash"  # hardcoded: env override removed (caused 404)
+EOD_PLUGIN_VERSION = "2026-09-27f"
+EOD_GEMINI_MODEL = "gemini-3.8-flash"  # 2.x models not available to new API keys
 
 _GEMINI_PROMPT = """You are reading a cashier's vault register page (a bank cash book).
 The page has two sides:
