@@ -236,6 +236,8 @@ BOOK_ORDER = [
 ]
 _BOOK_DENOS = (500, 200, 100)
 _book_sessions = {}  # {user_id: {book_name: book_data}}
+EOD_PLUGIN_VERSION = "2026-09-27e"
+EOD_GEMINI_MODEL = "gemini-2.5-flash"  # hardcoded: env override removed (caused 404)
 
 _GEMINI_PROMPT = """You are reading a cashier's vault register page (a bank cash book).
 The page has two sides:
@@ -262,7 +264,8 @@ def _gemini_extract(image_bytes: bytes) -> dict:
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         raise RuntimeError("GEMINI_API_KEY not set")
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    model = EOD_GEMINI_MODEL
+    logger.info(f"eod gemini model={model} key_len={len(key)}")
     payload = {"contents": [{"parts": [
         {"text": _GEMINI_PROMPT},
         {"inline_data": {"mime_type": "image/jpeg",
@@ -497,4 +500,7 @@ async def eod_book_order(client, message):
     for i, (name, _) in enumerate(BOOK_ORDER):
         mark = "✅" if name in session else f"{i + 1}."
         lines.append(f"{mark} {name}")
-    await message.reply_text("Book order:\n" + "\n".join(lines))
+    await message.reply_text(
+        f"Book order (v{EOD_PLUGIN_VERSION}, model {EOD_GEMINI_MODEL}):\n"
+        + "\n".join(lines)
+    )
