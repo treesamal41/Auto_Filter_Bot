@@ -18,7 +18,7 @@ from pyrogram.errors import FloodWait, UserNotParticipant , ChannelInvalid, Peer
 from database.ia_filterdb import Media, Media2, get_file_details, unpack_new_file_id, get_bad_files, save_file
 from database.users_chats_db import db
 from info import (
-    LOG_CHANNEL, IMDB_TEMPLATE, IS_VERIFY, TUTORIAL, TUTORIAL_2, TUTORIAL_3, EMOJI_MODE, REACTIONS,
+    LOG_CHANNEL, IMDB_TEMPLATE, IS_VERIFY, TUTORIAL, TUTORIAL_2, TUTORIAL_3,
     VERIFY_IMG, TWO_VERIFY_GAP, UPDATE_CHNL_LNK, PICS, PICS_URL, ADMINS, SUBSCRIPTION, OWNER_LNK , 
     OWNER_UPI_ID, QR_CODE, AUTH_CHANNELS, AUTH_REQ_CHANNELS, FSUB_PICS, THREE_VERIFY_GAP, CUSTOM_FILE_CAPTION,
     COVERX, PROTECT_CONTENT, DELETE_TIME, PREMIUM_STREAM_MODE, STREAM_MODE, SUPPORT_CHAT_ID, REQST_CHANNEL,
@@ -37,12 +37,6 @@ REQUEST_INVITE_LINK_CACHE: dict[int, str] = {}
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
     try:
-        if EMOJI_MODE:
-            try:
-                asyncio.create_task(message.react(emoji=random.choice(REACTIONS), big=True))
-            except Exception:
-                asyncio.create_task(message.react(emoji="⚡️"))
-                pass
         m = message
         if len(m.command) == 2 and m.command[1].startswith(('notcopy', 'sendall')):
             _, userid, verify_id, file_id = m.command[1].split("_", 3)
