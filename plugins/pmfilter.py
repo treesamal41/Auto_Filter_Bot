@@ -2115,10 +2115,6 @@ async def list_connections(client, message):
 
 # ------------------------------------------------------------------ trigger
 
-@Client.on_message(
-    filters.group & filters.text & filters.incoming & ~filters.regex(r"^/"),
-    group=-1,
-)
 async def _pgf_send_found(message, found, keyword):
     reply_text, buttons, alerts, file_id = found
     if reply_text:
@@ -2138,6 +2134,10 @@ async def _pgf_send_found(message, found, keyword):
         logger.exception("pgf trigger reply failed")
 
 
+@Client.on_message(
+    filters.group & filters.text & filters.incoming & ~filters.regex(r"^/"),
+    group=-1,
+)
 async def pgf_trigger(client, message):
     group_id = message.chat.id
     name = message.text or ""
