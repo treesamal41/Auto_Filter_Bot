@@ -1454,58 +1454,6 @@ async def auto_filter(client, msg, spoll=False):
                         cap += f"<b>\n{idx}. <a href='https://telegram.me/{temp.U_NAME}?start=file_{message.chat.id}_{file.file_id}'>[{get_size(file.file_size)}] {clean_filename(file.file_name)}\n</a></b>"
         if imdb and imdb.get("imdb_id"):
             btn.append([InlineKeyboardButton("📝 sᴜʙᴛɪᴛʟᴇs", callback_data=f"subdl#{imdb['imdb_id']}")])
-        # Series auto season picker: TV series search -> show season buttons directly
-        _is_series = bool(imdb and imdb.get('kind') == 'tv series')
-        _se_pat = re.compile(r'[Ss](\d{1,2})[Ee]\d{1,2}|\b[Ss]eason[\s._-]?(\d{1,2})\b')
-        if not _is_series:
-            # Fallback: detect series from episode patterns in filenames (S01E01 etc.)
-            for _f in files:
-                if _se_pat.search(_f.file_name or ""):
-                    _is_series = True
-                    break
-        if _is_series and settings.get('button'):
-            try:
-                n_seasons = int(imdb.get('seasons') or 0) if imdb else 0
-            except (TypeError, ValueError):
-                n_seasons = 0
-            if n_seasons > 0:
-                season_list = SEASONS[:n_seasons]
-            else:
-                # No count from IMDb: find actual seasons that have files in DB
-                season_list = []
-                try:
-                    _all_files, _, _ = await get_search_results(
-                        message.chat.id, search, max_results=500)
-                    _found = set()
-                    for _f in _all_files:
-                        _m = _se_pat.search(_f.file_name or "")
-                        if _m:
-                            _found.add(int(_m.group(1) or _m.group(2)))
-                    season_list = [f"S{s:02d}" for s in sorted(_found)]
-                except Exception:
-                    season_list = []
-            if not season_list:
-                season_list = None  # keep normal file list
-            else:
-                sbtn = [[InlineKeyboardButton("⇊ ꜱᴇʟᴇᴄᴛ ꜱᴇᴀꜱᴏɴ ⇊", callback_data="ident")]]
-                for i in range(0, len(season_list), 2):
-                    row = [InlineKeyboardButton(
-                        f"Sᴇᴀsᴏɴ {season_list[i][1:]}",
-                        callback_data=f"fs#{season_list[i].lower()}#{req}#{key}")]
-                    if i + 1 < len(season_list):
-                        row.append(InlineKeyboardButton(
-                            f"Sᴇᴀsᴏɴ {season_list[i+1][1:]}",
-                            callback_data=f"fs#{season_list[i+1].lower()}#{req}#{key}"))
-                    sbtn.append(row)
-                sbtn.append([InlineKeyboardButton(
-                    "↭ ʙᴀᴄᴋ ᴛᴏ ꜰɪʟᴇs ↭",
-                    callback_data=f"next_{req}_{key}_{offset}")])
-                for row in btn:
-                    for b in row:
-                        if b.callback_data and b.callback_data.startswith("subdl#"):
-                            sbtn.append([b])
-                            break
-                btn = sbtn
         sent = None
         try:
             if imdb and imdb.get('poster'):
@@ -1894,26 +1842,40 @@ def _markup_to_buttons(markup):
 
 @Client.on_message(filters.command(["filter", "add"]) & filters.incoming)
 async def addfilter(client, message):
-    await _add_filter_impl(client, message, global_mode=False)
+    try:
+        await _add_filter_impl(client, message, global_mode=False)
+    except Exception as e:
+        logger.exception("pgf command %s failed", "addfilter")
+        try:
+            await message.reply_text(f"<b>Error: {type(e).__name__}: {e}</b>", quote=True)
+        except Exception:
+            pass
 
 
 @Client.on_message(filters.command("gfilter") & filters.incoming)
 async def gfilter_cmd(client, message):
-    await _add_filter_impl(client, message, global_mode=True)
+    try:
+        await _add_filter_impl(client, message, global_mode=True)
+    except Exception as e:
+        logger.exception("pgf command %s failed", "gfilter_cmd")
+        try:
+            await message.reply_text(f"<b>Error: {type(e).__name__}: {e}</b>", quote=True)
+        except Exception:
+            pass
 
 
 async def _add_filter_impl(client, message, global_mode=False):
     user_id = message.from_user.id if message.from_user else 0
     if global_mode:
         if str(user_id) not in _auth_ids():
-            return
+            return await message.reply_text("Bot admins only.", quote=True)
         grp_id, title = "global", "Global (ella group-um)"
     else:
         grp_id, title = await _target_group(client, message)
         if not grp_id:
             return await message.reply_text(title, quote=True)
         if not await _is_grp_admin(client, grp_id, user_id):
-            return
+            return await message.reply_text("Group admin / bot admin alla.", quote=True)
 
     args = (message.text or "").split(None, 1)
     if len(args) < 2:
@@ -1946,19 +1908,33 @@ async def _add_filter_impl(client, message, global_mode=False):
 
 @Client.on_message(filters.command("del") & filters.incoming)
 async def delfilter(client, message):
-    await _del_filter_impl(client, message, global_mode=False)
+    try:
+        await _del_filter_impl(client, message, global_mode=False)
+    except Exception as e:
+        logger.exception("pgf command %s failed", "delfilter")
+        try:
+            await message.reply_text(f"<b>Error: {type(e).__name__}: {e}</b>", quote=True)
+        except Exception:
+            pass
 
 
 @Client.on_message(filters.command("delg") & filters.incoming)
 async def delg_cmd(client, message):
-    await _del_filter_impl(client, message, global_mode=True)
+    try:
+        await _del_filter_impl(client, message, global_mode=True)
+    except Exception as e:
+        logger.exception("pgf command %s failed", "delg_cmd")
+        try:
+            await message.reply_text(f"<b>Error: {type(e).__name__}: {e}</b>", quote=True)
+        except Exception:
+            pass
 
 
 async def _del_filter_impl(client, message, global_mode=False):
     user_id = message.from_user.id if message.from_user else 0
     if global_mode:
         if str(user_id) not in _auth_ids():
-            return
+            return await message.reply_text("Bot admins only.", quote=True)
         grp_id, title = "global", "Global"
     else:
         grp_id, title = await _target_group(client, message)
@@ -1977,26 +1953,40 @@ async def _del_filter_impl(client, message, global_mode=False):
 
 @Client.on_message(filters.command(["filters", "viewfilters"]) & filters.incoming)
 async def viewfilters(client, message):
-    await _view_filters_impl(client, message, global_mode=False)
+    try:
+        await _view_filters_impl(client, message, global_mode=False)
+    except Exception as e:
+        logger.exception("pgf command %s failed", "viewfilters")
+        try:
+            await message.reply_text(f"<b>Error: {type(e).__name__}: {e}</b>", quote=True)
+        except Exception:
+            pass
 
 
 @Client.on_message(filters.command("gfilters") & filters.incoming)
 async def gfilters_cmd(client, message):
-    await _view_filters_impl(client, message, global_mode=True)
+    try:
+        await _view_filters_impl(client, message, global_mode=True)
+    except Exception as e:
+        logger.exception("pgf command %s failed", "gfilters_cmd")
+        try:
+            await message.reply_text(f"<b>Error: {type(e).__name__}: {e}</b>", quote=True)
+        except Exception:
+            pass
 
 
 async def _view_filters_impl(client, message, global_mode=False):
     user_id = message.from_user.id if message.from_user else 0
     if global_mode:
         if str(user_id) not in _auth_ids():
-            return
+            return await message.reply_text("Bot admins only.", quote=True)
         grp_id, title = "global", "Global (ella group-um)"
     else:
         grp_id, title = await _target_group(client, message)
         if not grp_id:
             return await message.reply_text(title, quote=True)
         if not await _is_grp_admin(client, grp_id, user_id):
-            return
+            return await message.reply_text("Group admin / bot admin alla.", quote=True)
     keywords = await db_get_keywords(grp_id)
     count = len(keywords)
     if not count:
@@ -2121,6 +2111,16 @@ async def _pgf_send_found(message, found, keyword):
         reply_text = reply_text.replace("\\n", "\n").replace("\\t", "\t")
     markup = build_markup(buttons, keyword)
     try:
+        data = f"pgf_file#{keyword}"
+        if len(data.encode()) <= 60:
+            row = [InlineKeyboardButton("\U0001F4C2 Back to File", callback_data=data)]
+            if markup:
+                markup.inline_keyboard.append(row)
+            else:
+                markup = InlineKeyboardMarkup([row])
+    except Exception:
+        pass
+    try:
         if file_id and file_id != "None":
             await message.reply_cached_media(
                 file_id, caption=reply_text or "",
@@ -2165,6 +2165,31 @@ async def pgf_callbacks(client, query):
     data = query.data
     user_id = query.from_user.id
 
+    if data.startswith("pgf_file#"):
+        keyword = data.split("#", 1)[1]
+        try:
+            await query.answer("Searching files...")
+        except Exception:
+            pass
+
+        class _FakeMsg:
+            def __init__(self, q, text):
+                self.text = text
+                self.chat = q.message.chat
+                self.from_user = q.from_user
+                self.id = q.message.id
+
+            async def reply_text(self, *a, **kw):
+                return await client.send_message(self.chat.id, *a, **kw)
+
+            async def delete(self):
+                pass
+
+        try:
+            await auto_filter(client, _FakeMsg(query, keyword))
+        except Exception:
+            logger.exception("pgf back-to-file search failed")
+        return
     if data.startswith("pgf_alert:"):
         _, idx, keyword = data.split(":", 2)
         grp_id = query.message.chat.id
@@ -2273,3 +2298,18 @@ async def pgf_callbacks(client, query):
             reply_markup=InlineKeyboardMarkup(buttons) if buttons else None)
         await query.answer()
         raise StopPropagation
+
+
+@Client.on_message(filters.command("pgfstatus") & filters.incoming)
+async def pgf_status(client, message):
+    uid = str(message.from_user.id) if message.from_user else "?"
+    lines = [f"Your ID: <code>{uid}</code>",
+             f"In bot-admin list: <b>{uid in _auth_ids()}</b>",
+             f"AUTH_USERS: {len(AUTH_USERS or [])} | ADMINS: {len(ADMINS or [])}"]
+    try:
+        await asyncio.wait_for(_mclient.admin.command("ping"), timeout=6)
+        lines.append("Mongo: <b>OK</b>")
+        lines.append(f"Global filters: <b>{await db_count('global')}</b>")
+    except Exception as e:
+        lines.append(f"Mongo: <b>FAIL</b> {type(e).__name__}: {e}")
+    await message.reply_text("\n".join(lines), quote=True)
