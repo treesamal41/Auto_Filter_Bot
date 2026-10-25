@@ -1840,7 +1840,7 @@ async def delete_connection(user_id, group_id):
 # ------------------------------------------------------------------ shared
 
 def _auth_ids():
-    return {str(a) for a in (AUTH_USERS or [])}
+    return {str(a) for a in (AUTH_USERS or ADMINS or [])}
 
 
 async def _is_grp_admin(client, grp_id, user_id):
