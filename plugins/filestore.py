@@ -119,8 +119,8 @@ async def batch_cmd(client, message):
     _sessions[message.from_user.id] = {"step": "first", "mode": "batch"}
     await message.reply_text(
         "<b>📦 Batch create cheyyam.</b>\n\n"
-        "Source channel ile <b>FIRST</b> post nte link ayakkuka "
-        "(post il long-press → Copy Link).\n\n"
+        "Source channel ile <b>FIRST</b> post ee chat ilekku <b>forward</b> cheyyuka "
+        "(allenkil post nte link ayakkuka).\n\n"
         "Cancel cheyyan: /cancel")
 
 
@@ -129,7 +129,8 @@ async def link_cmd(client, message):
     _sessions[message.from_user.id] = {"step": "last", "mode": "link", "first": None}
     await message.reply_text(
         "<b>🔗 Single file link create cheyyam.</b>\n\n"
-        "Source channel ile post nte link ayakkuka.\n\n"
+        "Source channel ile post ee chat ilekku <b>forward</b> cheyyuka "
+        "(allenkil post nte link ayakkuka).\n\n"
         "Cancel cheyyan: /cancel")
 
 
@@ -141,39 +142,53 @@ async def cancel_cmd(client, message):
         await message.reply_text("<b>Active session onnum illa.</b>")
 
 
-@Client.on_message(filters.private & filters.user(ADMINS) & filters.text, group=5)
+@Client.on_message(filters.private & filters.user(ADMINS), group=-1)
 async def batch_link_input(client, message):
     session = _sessions.get(message.from_user.id)
     if not session:
         return
-    if message.text.startswith("/"):
+    if message.text and message.text.startswith("/"):
         return
-    parsed = _parse_link(message.text)
-    if not parsed:
-        return await message.reply_text(
-            "<b>❌ Valid Telegram post link alla.</b>\n"
-            "Example: <code>https://t.me/channel/123</code>\nVeendum ayakkuka, allenkil /cancel")
-    chat_ref, msg_id = parsed
+    # Source ref: forwarded post (simple) or a t.me post link
+    chat_ref = msg_id = None
+    fwd_chat = getattr(message, "forward_from_chat", None)
+    fwd_id = getattr(message, "forward_from_message_id", None)
+    if fwd_chat is not None and fwd_id:
+        chat_ref, msg_id = fwd_chat.id, fwd_id
+    elif message.text:
+        parsed = _parse_link(message.text)
+        if parsed:
+            chat_ref, msg_id = parsed
+    if chat_ref is None:
+        await message.reply_text(
+            "<b>❌ Post forward cheyyuka, allenkil valid post link ayakkuka.</b>\n"
+            "Example: <code>https://t.me/channel/123</code>\n/cancel cheyyan /cancel")
+        raise StopPropagation
     if session["mode"] == "link":
         _sessions.pop(message.from_user.id, None)
-        return await _make_batch(client, message, chat_ref, msg_id, msg_id)
+        await _make_batch(client, message, chat_ref, msg_id, msg_id)
+        raise StopPropagation
     if session["step"] == "first":
         session["first"] = (chat_ref, msg_id)
         session["step"] = "last"
-        return await message.reply_text(
-            "<b>👍 First link kitti.</b>\n\nIppo <b>LAST</b> post nte link ayakkuka (same channel).")
+        await message.reply_text(
+            "<b>👍 First post kitti.</b>\n\nIppo <b>LAST</b> post <b>forward</b> cheyyuka (same channel).")
+        raise StopPropagation
     # step == last
     first_chat, first_id = session["first"]
     _sessions.pop(message.from_user.id, None)
     if str(first_chat) != str(chat_ref):
-        return await message.reply_text(
-            "<b>❌ First um last um SAME channel ile link aayirikkanam.</b>\n/batch veendum thudanguka.")
+        await message.reply_text(
+            "<b>❌ First um last um SAME channel ile post aayirikkanam.</b>\n/batch veendum thudanguka.")
+        raise StopPropagation
     if msg_id < first_id:
         first_id, msg_id = msg_id, first_id
     if msg_id - first_id + 1 > MAX_RANGE:
-        return await message.reply_text(
+        await message.reply_text(
             f"<b>❌ Range valuthaanu</b> (max {MAX_RANGE} posts). Cheriya batch aayi split cheyyuka.")
+        raise StopPropagation
     await _make_batch(client, message, first_chat, first_id, msg_id)
+    raise StopPropagation
 
 
 @Client.on_message(filters.command("start") & filters.private, group=-1)
