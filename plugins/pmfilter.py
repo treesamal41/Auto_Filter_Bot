@@ -1892,18 +1892,32 @@ def _markup_to_buttons(markup):
 
 # ------------------------------------------------------------------ commands
 
-@Client.on_message(filters.command("add") & filters.incoming)
+@Client.on_message(filters.command(["filter", "add"]) & filters.incoming)
 async def addfilter(client, message):
+    await _add_filter_impl(client, message, global_mode=False)
+
+
+@Client.on_message(filters.command("gfilter") & filters.incoming)
+async def gfilter_cmd(client, message):
+    await _add_filter_impl(client, message, global_mode=True)
+
+
+async def _add_filter_impl(client, message, global_mode=False):
     user_id = message.from_user.id if message.from_user else 0
-    grp_id, title = await _target_group(client, message)
-    if not grp_id:
-        return await message.reply_text(title, quote=True)
-    if not await _is_grp_admin(client, grp_id, user_id):
-        return
+    if global_mode:
+        if str(user_id) not in _auth_ids():
+            return
+        grp_id, title = "global", "Global (ella group-um)"
+    else:
+        grp_id, title = await _target_group(client, message)
+        if not grp_id:
+            return await message.reply_text(title, quote=True)
+        if not await _is_grp_admin(client, grp_id, user_id):
+            return
 
     args = (message.text or "").split(None, 1)
     if len(args) < 2:
-        return await message.reply_text("Use: `/add keyword` as reply, or `/add keyword text`", quote=True)
+        return await message.reply_text("Use: `/filter keyword` as reply, or `/filter keyword text`", quote=True)
 
     extracted = split_quotes(args[1])
     keyword = extracted[0].lower()
@@ -1924,7 +1938,7 @@ async def addfilter(client, message):
         if not reply_text and not buttons:
             return await message.reply_text("Content kodukku!", quote=True)
     else:
-        return await message.reply_text("Content kodukku! Message-nu reply aayi /add use cheyyu.", quote=True)
+        return await message.reply_text("Content kodukku! Message-nu reply aayi /filter use cheyyu.", quote=True)
 
     await db_add_filter(grp_id, keyword, reply_text, buttons, file_id, alerts)
     await message.reply_text(f"Filter `{keyword}` added in **{title}**", quote=True)
@@ -1932,12 +1946,26 @@ async def addfilter(client, message):
 
 @Client.on_message(filters.command("del") & filters.incoming)
 async def delfilter(client, message):
+    await _del_filter_impl(client, message, global_mode=False)
+
+
+@Client.on_message(filters.command("delg") & filters.incoming)
+async def delg_cmd(client, message):
+    await _del_filter_impl(client, message, global_mode=True)
+
+
+async def _del_filter_impl(client, message, global_mode=False):
     user_id = message.from_user.id if message.from_user else 0
-    grp_id, title = await _target_group(client, message)
-    if not grp_id:
-        return await message.reply_text(title, quote=True)
-    if not await _is_grp_admin(client, grp_id, user_id):
-        return
+    if global_mode:
+        if str(user_id) not in _auth_ids():
+            return
+        grp_id, title = "global", "Global"
+    else:
+        grp_id, title = await _target_group(client, message)
+        if not grp_id:
+            return await message.reply_text(title, quote=True)
+        if not await _is_grp_admin(client, grp_id, user_id):
+            return
     parts = (message.text or "").split(None, 1)
     if len(parts) < 2:
         return await message.reply_text("Use: `/del keyword`", quote=True)
@@ -1947,14 +1975,28 @@ async def delfilter(client, message):
         await message.reply_text("Aa keyword-il filter illa.", quote=True)
 
 
-@Client.on_message(filters.command("viewfilters") & filters.incoming)
+@Client.on_message(filters.command(["filters", "viewfilters"]) & filters.incoming)
 async def viewfilters(client, message):
+    await _view_filters_impl(client, message, global_mode=False)
+
+
+@Client.on_message(filters.command("gfilters") & filters.incoming)
+async def gfilters_cmd(client, message):
+    await _view_filters_impl(client, message, global_mode=True)
+
+
+async def _view_filters_impl(client, message, global_mode=False):
     user_id = message.from_user.id if message.from_user else 0
-    grp_id, title = await _target_group(client, message)
-    if not grp_id:
-        return await message.reply_text(title, quote=True)
-    if not await _is_grp_admin(client, grp_id, user_id):
-        return
+    if global_mode:
+        if str(user_id) not in _auth_ids():
+            return
+        grp_id, title = "global", "Global (ella group-um)"
+    else:
+        grp_id, title = await _target_group(client, message)
+        if not grp_id:
+            return await message.reply_text(title, quote=True)
+        if not await _is_grp_admin(client, grp_id, user_id):
+            return
     keywords = await db_get_keywords(grp_id)
     count = len(keywords)
     if not count:
@@ -1985,6 +2027,21 @@ async def delall_ask(client, message):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("YES", callback_data="pgf_da_yes"),
              InlineKeyboardButton("CANCEL", callback_data="pgf_da_no")],
+        ]),
+        quote=True,
+    )
+
+
+@Client.on_message(filters.command("delallg") & filters.incoming)
+async def delallg_ask(client, message):
+    user_id = message.from_user.id if message.from_user else 0
+    if str(user_id) not in _auth_ids():
+        return
+    await message.reply_text(
+        "**Global**-ile ella filters-um delete cheyyatte?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("YES", callback_data="pgf_gda_yes"),
+             InlineKeyboardButton("CANCEL", callback_data="pgf_gda_no")],
         ]),
         quote=True,
     )
@@ -2062,38 +2119,43 @@ async def list_connections(client, message):
     filters.group & filters.text & filters.incoming & ~filters.regex(r"^/"),
     group=-1,
 )
+async def _pgf_send_found(message, found, keyword):
+    reply_text, buttons, alerts, file_id = found
+    if reply_text:
+        reply_text = reply_text.replace("\\n", "\n").replace("\\t", "\t")
+    markup = build_markup(buttons, keyword)
+    try:
+        if file_id and file_id != "None":
+            await message.reply_cached_media(
+                file_id, caption=reply_text or "",
+                reply_markup=markup)
+        else:
+            await message.reply_text(reply_text, reply_markup=markup,
+                                     disable_web_page_preview=True)
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
+    except Exception:
+        logger.exception("pgf trigger reply failed")
+
+
 async def pgf_trigger(client, message):
     group_id = message.chat.id
     name = message.text or ""
-    try:
-        keywords = await db_get_keywords(group_id)
-    except Exception:
-        return
-    if not keywords:
-        return
-    for keyword in sorted(keywords, key=len, reverse=True):
-        pattern = r"( |^|[^\w])" + re.escape(keyword) + r"( |$|[^\w])"
-        if re.search(pattern, name, flags=re.IGNORECASE):
-            found = await db_find_filter(group_id, keyword)
-            if not found:
-                continue
-            reply_text, buttons, alerts, file_id = found
-            if reply_text:
-                reply_text = reply_text.replace("\\n", "\n").replace("\\t", "\t")
-            markup = build_markup(buttons, keyword)
-            try:
-                if file_id and file_id != "None":
-                    await message.reply_cached_media(
-                        file_id, caption=reply_text or "",
-                        reply_markup=markup)
-                else:
-                    await message.reply_text(reply_text, reply_markup=markup,
-                                             disable_web_page_preview=True)
-            except FloodWait as e:
-                await asyncio.sleep(e.value)
-            except Exception:
-                logger.exception("pgf trigger reply failed")
-            raise StopPropagation
+    for scope in (group_id, "global"):
+        try:
+            keywords = await db_get_keywords(scope)
+        except Exception:
+            return
+        if not keywords:
+            continue
+        for keyword in sorted(keywords, key=len, reverse=True):
+            pattern = r"( |^|[^\w])" + re.escape(keyword) + r"( |$|[^\w])"
+            if re.search(pattern, name, flags=re.IGNORECASE):
+                found = await db_find_filter(scope, keyword)
+                if not found:
+                    continue
+                await _pgf_send_found(message, found, keyword)
+                raise StopPropagation
 
 
 # ------------------------------------------------------------------ callbacks
@@ -2107,6 +2169,8 @@ async def pgf_callbacks(client, query):
         _, idx, keyword = data.split(":", 2)
         grp_id = query.message.chat.id
         found = await db_find_filter(grp_id, keyword)
+        if not found:
+            found = await db_find_filter("global", keyword)
         if found:
             _, _, alerts, _ = found
             try:
@@ -2133,6 +2197,18 @@ async def pgf_callbacks(client, query):
         raise StopPropagation
 
     if data == "pgf_da_no":
+        await query.message.delete()
+        raise StopPropagation
+
+    if data == "pgf_gda_yes":
+        if str(user_id) not in _auth_ids():
+            await query.answer("Bot admin mathram!", show_alert=True)
+            raise StopPropagation
+        n = await db_del_all("global")
+        await query.message.edit_text(f"{n} global filters deleted.")
+        raise StopPropagation
+
+    if data == "pgf_gda_no":
         await query.message.delete()
         raise StopPropagation
 
